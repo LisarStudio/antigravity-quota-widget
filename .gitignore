@@ -1,4 +1,10 @@
 node_modules/
 dist/
-.DS_Store
+release/
 *.log
+.env
+npm-debug.log*
+db-dump.txt
+discovery.json
+nsis.7z
+wcs.7z

@@ -1,6 +1,6 @@
 import React from 'react';
+import { RefreshCw, Settings, Minimize2, X, Pin, Maximize2 } from 'lucide-react';
 import { ConnectionStatus, WidgetSettings } from '../types/quota';
-import { RefreshCw, Settings, Minimize2, Maximize2, ShieldAlert, Wifi, WifiOff } from 'lucide-react';
 
 interface HeaderProps {
   status: ConnectionStatus;
@@ -10,112 +10,155 @@ interface HeaderProps {
   onRefresh: () => void;
   onToggleMode: () => void;
   onOpenSettings: () => void;
+  planName?: string;
+  userEmail?: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-  status,
-  lastSyncedAt,
-  settings,
-  isRefreshing,
-  onRefresh,
-  onToggleMode,
-  onOpenSettings,
-}) => {
-  const getStatusBadge = () => {
-    switch (status) {
-      case 'CONNECTED':
-        return {
-          label: 'EN VIVO',
-          color: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10 shadow-[0_0_10px_rgba(16,185,129,0.3)]',
-          dot: 'bg-emerald-400 shadow-[0_0_8px_#10B981]',
-          icon: Wifi,
-        };
-      case 'DEMO_MODE':
-        return {
-          label: 'MODO DEMO',
-          color: 'text-cyan-300 border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_10px_rgba(6,182,212,0.3)]',
-          dot: 'bg-cyan-400 shadow-[0_0_8px_#06B6D4]',
-          icon: Wifi,
-        };
-      case 'STALE':
-        return {
-          label: 'DESACTUALIZADO',
-          color: 'text-amber-400 border-amber-500/40 bg-amber-500/10',
-          dot: 'bg-amber-400',
-          icon: ShieldAlert,
-        };
-      case 'AUTH_ERROR':
-        return {
-          label: 'ERROR AUTH',
-          color: 'text-rose-400 border-rose-500/40 bg-rose-500/10',
-          dot: 'bg-rose-400',
-          icon: ShieldAlert,
-        };
-      default:
-        return {
-          label: 'SIN CONEXIÓN',
-          color: 'text-slate-400 border-slate-600/40 bg-slate-800/40',
-          dot: 'bg-slate-500',
-          icon: WifiOff,
-        };
-    }
-  };
+const statusConfig: Record<ConnectionStatus, { label: string; dotClass: string; text: string }> = {
+  CONNECTED:    { label: 'CONECTADO',    dotClass: 'connected',    text: 'var(--green-ok)' },
+  DEMO_MODE:    { label: 'DEMO',         dotClass: 'demo',         text: 'var(--cyan-info)' },
+  DISCONNECTED: { label: 'DESCONECTADO', dotClass: 'disconnected', text: 'var(--red-bright)' },
+  STALE:        { label: 'DATOS VIEJOS', dotClass: 'warning',      text: 'var(--amber-warn)' },
+  AUTH_ERROR:   { label: 'ERROR AUTH',   dotClass: 'disconnected', text: 'var(--red-bright)' },
+  CONNECTING:   { label: 'CONECTANDO',   dotClass: 'warning',      text: 'var(--amber-warn)' },
+};
 
-  const badge = getStatusBadge();
-  const StatusIcon = badge.icon;
+const isElectron = typeof window !== 'undefined' && !!(window as any).electronAPI;
+const electronAPI = isElectron ? (window as any).electronAPI : null;
+
+export function Header({
+  status, lastSyncedAt, settings, isRefreshing,
+  onRefresh, onToggleMode, onOpenSettings, planName, userEmail
+}: HeaderProps) {
+  const cfg = statusConfig[status] ?? statusConfig.DISCONNECTED;
 
   return (
-    <header className="drag-header select-none flex items-center justify-between px-4 py-3 bg-slate-950/70 border-b border-cyan-500/20 backdrop-blur-md rounded-t-2xl">
-      {/* Título & Conexión */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex items-center justify-center">
-          <div className={`w-2.5 h-2.5 rounded-full ${badge.dot} animate-pulse`} />
+    <header
+      className="drag-handle"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        padding: '10px 14px 10px 14px',
+        borderBottom: '1px solid var(--border-subtle)',
+        background: 'linear-gradient(180deg, rgba(255,45,45,0.06) 0%, transparent 100%)',
+        gap: '10px',
+        flexShrink: 0,
+      }}
+    >
+      {/* Logo + Title */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+        <div style={{
+          width: '28px', height: '28px', flexShrink: 0,
+          background: 'var(--red-dim)',
+          border: '1px solid var(--red-border)',
+          borderRadius: '6px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 0 10px var(--red-glow)',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2L13 5V11L8 14L3 11V5L8 2Z" stroke="var(--red-bright)" strokeWidth="1.2" fill="none"/>
+            <path d="M8 5L10.5 6.5V9.5L8 11L5.5 9.5V6.5L8 5Z" fill="var(--red-core)" opacity="0.8"/>
+          </svg>
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-orbitron font-extrabold text-xs tracking-widest text-slate-100 uppercase drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">
-              ANTIGRAVITY <span className="text-cyan-400">AI MONITOR</span>
-            </h1>
-            <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border ${badge.color} flex items-center gap-1`}>
-              <StatusIcon className="w-2.5 h-2.5" />
-              {badge.label}
+        <div style={{ minWidth: 0 }}>
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            fontWeight: '700',
+            color: 'var(--text-primary)',
+            letterSpacing: '0.08em',
+            lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {planName || 'ANTIGRAVITY MONITOR'}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+            <div className={`status-dot ${cfg.dotClass}`} />
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '8px',
+              color: cfg.text,
+              letterSpacing: '0.1em',
+            }}>
+              {userEmail ? userEmail.split('@')[0].toUpperCase() : cfg.label}
+            </span>
+            <span style={{ color: 'var(--text-dim)', fontSize: '8px' }}>·</span>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '8px',
+              color: 'var(--text-dim)',
+            }}>
+              {lastSyncedAt}
             </span>
           </div>
-          <p className="text-[10px] font-mono text-slate-400">
-            Última sync: <span className="text-slate-200">{lastSyncedAt || '--:--:--'}</span>
-          </p>
         </div>
       </div>
 
-      {/* Botones de Acción */}
-      <div className="no-drag flex items-center gap-1.5">
+      {/* Actions */}
+      <div className="no-drag" style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
         <button
+          className="icon-btn"
           onClick={onRefresh}
           disabled={isRefreshing}
-          className={`p-1.5 rounded-lg bg-slate-800/60 hover:bg-cyan-950/60 text-slate-300 hover:text-cyan-400 border border-slate-700/50 hover:border-cyan-500/40 transition-all cursor-pointer ${
-            isRefreshing ? 'animate-spin text-cyan-400' : ''
-          }`}
-          title="Actualizar datos ahora"
+          title="Actualizar datos"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw
+            size={13}
+            style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }}
+          />
         </button>
 
         <button
-          onClick={onToggleMode}
-          className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-cyan-950/60 text-slate-300 hover:text-cyan-400 border border-slate-700/50 hover:border-cyan-500/40 transition-all cursor-pointer"
-          title={settings.mode === 'EXPANDED' ? 'Cambiar a Modo Barrita Compacta' : 'Cambiar a Modo Expandido'}
+          className={`icon-btn ${settings.alwaysOnTop ? 'active' : ''}`}
+          onClick={() => {
+            const newVal = !settings.alwaysOnTop;
+            electronAPI?.setAlwaysOnTop(newVal);
+          }}
+          title="Siempre encima"
         >
-          {settings.mode === 'EXPANDED' ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          <Pin size={12} />
         </button>
 
         <button
+          className="icon-btn"
           onClick={onOpenSettings}
-          className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-purple-950/60 text-slate-300 hover:text-purple-400 border border-slate-700/50 hover:border-purple-500/40 transition-all cursor-pointer"
-          title="Ajustes y Configuración"
+          title="Configuración"
         >
-          <Settings className="w-3.5 h-3.5" />
+          <Settings size={13} />
         </button>
+
+        <div style={{ width: '1px', height: '18px', background: 'var(--border-subtle)', margin: '0 3px' }} />
+
+        <button
+          className="icon-btn"
+          onClick={onToggleMode}
+          title="Modo compacto"
+        >
+          <Minimize2 size={12} />
+        </button>
+
+        {isElectron && (
+          <button
+            className="icon-btn"
+            onClick={() => electronAPI?.minimizeApp()}
+            title="Minimizar"
+          >
+            <Maximize2 size={12} style={{ transform: 'rotate(45deg)' }} />
+          </button>
+        )}
+
+        {isElectron && (
+          <button
+            className="icon-btn danger"
+            onClick={() => electronAPI?.closeApp()}
+            title="Cerrar (queda en bandeja)"
+          >
+            <X size={13} />
+          </button>
+        )}
       </div>
     </header>
   );
-};
+}

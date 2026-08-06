@@ -1,34 +1,473 @@
-@import "tailwindcss";
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANTIGRAVITY AI MONITOR — Design System CSS
+   JARVIS-Red Aesthetic: Dark cyberpunk, red neon, JetBrains Mono
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-@layer utilities {
-  .drag-header {
-    -webkit-app-region: drag;
-  }
-  .no-drag {
-    -webkit-app-region: no-drag;
-  }
-}
-
-body {
+/* ─── Reset ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  background: transparent;
-  font-family: 'Rajdhani', sans-serif;
+}
+
+/* ─── Variables ─────────────────────────────────────────────────────────── */
+:root {
+  /* Core Colors */
+  --bg-void:        #05050a;
+  --bg-deep:        #080810;
+  --bg-panel:       #0d0d18;
+  --bg-card:        #111122;
+  --bg-hover:       #161628;
+  --bg-glass:       rgba(13, 13, 24, 0.92);
+
+  /* JARVIS Red Palette */
+  --red-core:       #FF2D2D;
+  --red-bright:     #FF5555;
+  --red-glow:       rgba(255, 45, 45, 0.35);
+  --red-dim:        rgba(255, 45, 45, 0.12);
+  --red-border:     rgba(255, 45, 45, 0.4);
+}
+
+/* ─── Themes ────────────────────────────────────────────────────────────── */
+body[data-theme="blue"] {
+  --red-core:       #0BC5EA;
+  --red-bright:     #38B2AC;
+  --red-glow:       rgba(11, 197, 234, 0.35);
+  --red-dim:        rgba(11, 197, 234, 0.12);
+  --red-border:     rgba(11, 197, 234, 0.4);
+}
+body[data-theme="green"] {
+  --red-core:       #30D158;
+  --red-bright:     #34C759;
+  --red-glow:       rgba(48, 209, 88, 0.35);
+  --red-dim:        rgba(48, 209, 88, 0.12);
+  --red-border:     rgba(48, 209, 88, 0.4);
+}
+body[data-theme="purple"] {
+  --red-core:       #AF52DE;
+  --red-bright:     #BF5AF2;
+  --red-glow:       rgba(175, 82, 222, 0.35);
+  --red-dim:        rgba(175, 82, 222, 0.12);
+  --red-border:     rgba(175, 82, 222, 0.4);
+}
+
+/* ─── Shared Variables (all themes) ──────────────────────────────────────── */
+:root {
+  /* Accent Colors */
+  --amber-warn:     #FF9500;
+  --amber-dim:      rgba(255, 149, 0, 0.2);
+  --green-ok:       #30D158;
+  --green-dim:      rgba(48, 209, 88, 0.2);
+  --cyan-info:      #0BC5EA;
+  --cyan-dim:       rgba(11, 197, 234, 0.15);
+
+  /* Text */
+  --text-primary:   #F0F0FF;
+  --text-secondary: rgba(240, 240, 255, 0.65);
+  --text-dim:       rgba(240, 240, 255, 0.35);
+  --text-red:       #FF6B6B;
+
+  /* Borders & Dividers */
+  --border-subtle:  rgba(255, 45, 45, 0.15);
+  --border-normal:  rgba(255, 45, 45, 0.30);
+  --border-bright:  rgba(255, 45, 45, 0.60);
+
+  /* Shadows */
+  --shadow-glow:    0 0 30px rgba(255, 45, 45, 0.20), 0 0 60px rgba(255, 45, 45, 0.08);
+  --shadow-card:    0 4px 24px rgba(0, 0, 0, 0.60);
+  --shadow-inner:   inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  /* Typography */
+  --font-mono:      'JetBrains Mono', 'Consolas', monospace;
+  --font-sans:      'Inter', system-ui, sans-serif;
+
+  /* Sizing */
+  --radius-sm:      4px;
+  --radius-md:      8px;
+  --radius-lg:      12px;
+  --radius-xl:      16px;
+  --bg-elevated:    #1a1a2e;
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────────── */
+html, body, #root {
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  background: transparent;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
   user-select: none;
 }
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+/* ─── Drag Handle ───────────────────────────────────────────────────────── */
+.drag-handle {
+  -webkit-app-region: drag;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+.no-drag {
+  -webkit-app-region: no-drag;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(6, 182, 212, 0.4);
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 3px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--red-border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--red-bright);
+}
+
+/* ─── Scanline Overlay ───────────────────────────────────────────────────── */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ─── HUD Corner Decorations ─────────────────────────────────────────────── */
+.hud-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 20;
+}
+.hud-corner-tl { top: 8px; left: 8px; border-top: 1.5px solid var(--red-bright); border-left: 1.5px solid var(--red-bright); }
+.hud-corner-tr { top: 8px; right: 8px; border-top: 1.5px solid var(--red-bright); border-right: 1.5px solid var(--red-bright); }
+.hud-corner-bl { bottom: 8px; left: 8px; border-bottom: 1.5px solid var(--red-bright); border-left: 1.5px solid var(--red-bright); }
+.hud-corner-br { bottom: 8px; right: 8px; border-bottom: 1.5px solid var(--red-bright); border-right: 1.5px solid var(--red-bright); }
+
+/* ─── Progress Bar ───────────────────────────────────────────────────────── */
+.progress-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+  height: 6px;
+  position: relative;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.15));
   border-radius: 4px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(6, 182, 212, 0.8);
+
+/* ─── Status Dot ─────────────────────────────────────────────────────────── */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.connected { background: var(--green-ok); box-shadow: 0 0 8px var(--green-ok); animation: pulse-green 2.5s infinite; }
+.status-dot.disconnected { background: var(--red-core); box-shadow: 0 0 8px var(--red-core); animation: pulse-red 1.5s infinite; }
+.status-dot.demo { background: var(--cyan-info); box-shadow: 0 0 8px var(--cyan-info); animation: pulse-cyan 3s infinite; }
+.status-dot.warning { background: var(--amber-warn); box-shadow: 0 0 8px var(--amber-warn); animation: pulse-amber 2s infinite; }
+
+/* ─── Gauge Arc (SVG) ────────────────────────────────────────────────────── */
+.gauge-ring {
+  filter: drop-shadow(0 0 6px currentColor);
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Icon Button ────────────────────────────────────────────────────────── */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-app-region: no-drag;
+}
+.icon-btn:hover {
+  background: var(--red-dim);
+  color: var(--text-red);
+}
+.icon-btn.active {
+  color: var(--red-bright);
+  background: var(--red-dim);
+}
+.icon-btn.danger:hover {
+  background: rgba(255, 45, 45, 0.25);
+  color: var(--red-core);
+}
+
+/* ─── Card ───────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  box-shadow: var(--shadow-card), var(--shadow-inner);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease;
+}
+.card:hover {
+  border-color: var(--border-normal);
+}
+.card.critical {
+  border-color: var(--red-border);
+  box-shadow: 0 0 20px var(--red-glow), var(--shadow-card);
+}
+.card.warning {
+  border-color: rgba(255, 149, 0, 0.4);
+  box-shadow: 0 0 16px rgba(255, 149, 0, 0.15), var(--shadow-card);
+}
+
+/* ─── Label / Value pairs ────────────────────────────────────────────────── */
+.data-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.data-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.data-value.large {
+  font-size: 22px;
+  font-weight: 700;
+}
+.data-value.red { color: var(--red-bright); }
+.data-value.green { color: var(--green-ok); }
+.data-value.amber { color: var(--amber-warn); }
+.data-value.cyan { color: var(--cyan-info); }
+
+/* ─── Divider ────────────────────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-subtle) 30%, var(--border-subtle) 70%, transparent);
+  margin: 10px 0;
+}
+
+/* ─── Badge ──────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.badge.ok { background: var(--green-dim); color: var(--green-ok); border: 1px solid rgba(48, 209, 88, 0.3); }
+.badge.warn { background: var(--amber-dim); color: var(--amber-warn); border: 1px solid rgba(255, 149, 0, 0.3); }
+.badge.critical { background: var(--red-dim); color: var(--red-bright); border: 1px solid var(--red-border); }
+.badge.demo { background: var(--cyan-dim); color: var(--cyan-info); border: 1px solid rgba(11, 197, 234, 0.3); }
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--red-core); }
+  50% { opacity: 0.5; box-shadow: 0 0 4px var(--red-core); }
+}
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 8px var(--green-ok); }
+  50% { box-shadow: 0 0 3px var(--green-ok); }
+}
+@keyframes pulse-cyan {
+  0%, 100% { box-shadow: 0 0 8px var(--cyan-info); }
+  50% { box-shadow: 0 0 3px var(--cyan-info); }
+}
+@keyframes pulse-amber {
+  0%, 100% { box-shadow: 0 0 8px var(--amber-warn); }
+  50% { box-shadow: 0 0 3px var(--amber-warn); }
+}
+@keyframes shimmer {
+  0% { opacity: 0; transform: translateX(-20px); }
+  50% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes critical-flash {
+  0%, 100% { background: var(--bg-card); }
+  50% { background: rgba(255, 45, 45, 0.08); }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: var(--shadow-glow); }
+  50% { box-shadow: 0 0 50px rgba(255, 45, 45, 0.35), 0 0 100px rgba(255, 45, 45, 0.12); }
+}
+/* countdown-tick removed — static white text only */
+
+/* ─── Loading State ─────────────────────────────────────────────────────── */
+.loading-ring {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--red-dim);
+  border-top-color: var(--red-core);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ─── Sparkline Container ────────────────────────────────────────────────── */
+.sparkline-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Main Widget Container ──────────────────────────────────────────────── */
+.widget-root {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-normal);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: var(--shadow-glow), var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  animation: fade-in 0.4s ease;
+}
+.widget-root.critical-state {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Compact Widget ─────────────────────────────────────────────────────── */
+.compact-widget {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-normal);
+  border-radius: 36px;
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: var(--shadow-glow);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  animation: fade-in 0.3s ease;
+}
+
+/* ─── Settings Modal ─────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 5, 10, 0.88);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.2s ease;
+}
+.modal-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-normal);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-card);
+  animation: slide-in 0.25s ease;
+}
+
+/* ─── Toggle Switch ──────────────────────────────────────────────────────── */
+.toggle {
+  width: 36px;
+  height: 20px;
+  background: var(--bg-hover);
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+}
+.toggle.on {
+  background: var(--red-dim);
+  border-color: var(--red-border);
+}
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  top: 2px;
+  left: 2px;
+  transition: all 0.25s ease;
+}
+.toggle.on::after {
+  background: var(--red-bright);
+  transform: translateX(16px);
+  box-shadow: 0 0 8px var(--red-core);
+}
+
+/* ─── Alert Banner ───────────────────────────────────────────────────────── */
+.alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.alert-banner.demo {
+  background: rgba(11, 197, 234, 0.08);
+  color: var(--cyan-info);
+}
+.alert-banner.warning {
+  background: rgba(255, 45, 45, 0.08);
+  color: var(--red-bright);
+  animation: critical-flash 2s infinite;
 }

@@ -1,180 +1,232 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { X, Bell, Volume2, RefreshCw, Eye, Moon, Info } from 'lucide-react';
 import { WidgetSettings } from '../types/quota';
-import { X, Sliders, Bell, Volume2, Shield, Eye, Layers } from 'lucide-react';
 
 interface SettingsModalProps {
   settings: WidgetSettings;
-  onSave: (newSettings: WidgetSettings) => void;
+  onSave: (settings: WidgetSettings) => void;
   onClose: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, onClose }) => {
-  const [current, setCurrent] = React.useState<WidgetSettings>({ ...settings });
+function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      className={`toggle ${on ? 'on' : ''}`}
+      onClick={() => onChange(!on)}
+      type="button"
+    />
+  );
+}
 
-  const handleChange = <K extends keyof WidgetSettings>(key: K, value: WidgetSettings[K]) => {
-    const updated = { ...current, [key]: value };
-    setCurrent(updated);
-    onSave(updated);
+function SettingsRow({
+  label, desc, children
+}: {
+  label: string; desc?: string; children: React.ReactNode
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div>
+        <div style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500 }}>{label}</div>
+        {desc && <div style={{ fontFamily: 'var(--font-sans)', fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>{desc}</div>}
+      </div>
+      <div className="no-drag">{children}</div>
+    </div>
+  );
+}
+
+export function SettingsModal({ settings, onSave, onClose }: SettingsModalProps) {
+  const [local, setLocal] = useState({ ...settings });
+
+  const update = (patch: Partial<WidgetSettings>) => {
+    setLocal(prev => ({ ...prev, ...patch }));
   };
 
-  const toggleRule = (ruleId: string) => {
-    const updatedRules = current.notificationRules.map((rule) =>
-      rule.id === ruleId ? { ...rule, enabled: !rule.enabled } : rule
-    );
-    handleChange('notificationRules', updatedRules);
+  const handleSave = () => {
+    onSave(local);
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-slate-900 border border-cyan-500/40 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto font-sans">
-        {/* Header Modal */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2 text-cyan-400">
-            <Sliders className="w-4 h-4" />
-            <h3 className="font-orbitron font-extrabold text-sm text-white tracking-wider">
-              CONFIGURACIÓN DEL WIDGET
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* 1. Visual & Comportamiento */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-cyan-400" />
-            Visual & Comportamiento
-          </h4>
-
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-3 text-xs font-mono">
-            {/* Opacidad */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-300">
-                <span>Opacidad del Widget:</span>
-                <span className="font-bold text-cyan-400">{Math.round(current.opacity * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0.5"
-                max="1.0"
-                step="0.05"
-                value={current.opacity}
-                onChange={(e) => handleChange('opacity', parseFloat(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer"
-              />
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box no-drag" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.06em' }}>
+              CONFIGURACIÓN
             </div>
-
-            {/* Intervalo de Polling */}
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300">Frecuencia de Actualización:</span>
-              <select
-                value={current.pollIntervalSeconds}
-                onChange={(e) => handleChange('pollIntervalSeconds', parseInt(e.target.value, 10))}
-                className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 text-xs focus:border-cyan-400 outline-none"
-              >
-                <option value={15}>15 segundos (Activo)</option>
-                <option value={30}>30 segundos</option>
-                <option value={60}>60 segundos (Normal)</option>
-              </select>
-            </div>
-
-            {/* Siempre al frente */}
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300">Fijar siempre al frente (Always on top):</span>
-              <input
-                type="checkbox"
-                checked={current.alwaysOnTop}
-                onChange={(e) => handleChange('alwaysOnTop', e.target.checked)}
-                className="accent-cyan-400 rounded cursor-pointer w-4 h-4"
-              />
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-dim)', marginTop: '2px' }}>
+              Antigravity AI Monitor v1.0.0
             </div>
           </div>
+          <button className="icon-btn danger" onClick={onClose}><X size={14} /></button>
         </div>
 
-        {/* 2. Modo Demo (Desarrollo) */}
-        <div className="space-y-2">
-          <h4 className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 text-purple-400" />
-            Fuente de Datos & Desarrollo
-          </h4>
+        {/* Sección: Datos */}
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--red-bright)', letterSpacing: '0.12em', marginBottom: '8px', marginTop: '4px' }}>
+          ── DATOS ──
+        </div>
 
-          <div className="bg-purple-950/20 border border-purple-500/30 p-3 rounded-xl flex items-center justify-between text-xs font-mono">
-            <div>
-              <span className="font-bold text-purple-300 block">Modo Demostración (Demo Mode)</span>
-              <span className="text-[10px] text-slate-400">Genera datos de prueba aislados para evaluación visual.</span>
-            </div>
+        <SettingsRow label="Modo Demostración" desc="Usa datos ficticios para probar el widget">
+          <Toggle on={local.demoMode} onChange={v => update({ demoMode: v })} />
+        </SettingsRow>
+
+        <SettingsRow label="Intervalo de Actualización" desc={`Cada ${local.pollIntervalSeconds}s`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <input
-              type="checkbox"
-              checked={current.demoMode}
-              onChange={(e) => handleChange('demoMode', e.target.checked)}
-              className="accent-purple-500 rounded cursor-pointer w-4 h-4"
+              type="range"
+              min={15} max={300} step={15}
+              value={local.pollIntervalSeconds}
+              onChange={e => update({ pollIntervalSeconds: Number(e.target.value) })}
+              style={{
+                width: '80px',
+                accentColor: 'var(--red-bright)',
+                background: 'var(--bg-hover)',
+              }}
             />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', minWidth: '30px' }}>
+              {local.pollIntervalSeconds}s
+            </span>
           </div>
+        </SettingsRow>
+
+        {/* Sección: Apariencia */}
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--red-bright)', letterSpacing: '0.12em', marginBottom: '8px', marginTop: '14px' }}>
+          ── APARIENCIA ──
         </div>
 
-        {/* 3. Notificaciones & Sonido */}
-        <div className="space-y-2">
-          <h4 className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <Bell className="w-3.5 h-3.5 text-emerald-400" />
-            Notificaciones y Sonido
-          </h4>
+        <SettingsRow label="Siempre Encima" desc="El widget flota sobre otras ventanas">
+          <Toggle on={local.alwaysOnTop ?? true} onChange={v => {
+            update({ alwaysOnTop: v });
+            (window as any).electronAPI?.setAlwaysOnTop(v);
+          }} />
+        </SettingsRow>
 
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2.5 text-xs font-mono">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300 flex items-center gap-1.5">
-                <Bell className="w-3.5 h-3.5 text-slate-400" /> Notificaciones Nativas
-              </span>
-              <input
-                type="checkbox"
-                checked={current.notificationsEnabled}
-                onChange={(e) => handleChange('notificationsEnabled', e.target.checked)}
-                className="accent-emerald-400 rounded cursor-pointer w-4 h-4"
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300 flex items-center gap-1.5">
-                <Volume2 className="w-3.5 h-3.5 text-slate-400" /> Sonido SFX de Alerta
-              </span>
-              <input
-                type="checkbox"
-                checked={current.soundEnabled}
-                onChange={(e) => handleChange('soundEnabled', e.target.checked)}
-                className="accent-emerald-400 rounded cursor-pointer w-4 h-4"
-              />
-            </div>
-
-            <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Reglas de Alerta:</span>
-              {current.notificationRules.map((rule) => (
-                <div key={rule.id} className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-300">{rule.name}</span>
-                  <input
-                    type="checkbox"
-                    checked={rule.enabled}
-                    onChange={() => toggleRule(rule.id)}
-                    className="accent-emerald-400 rounded cursor-pointer"
-                  />
-                </div>
-              ))}
-            </div>
+        <SettingsRow label="Opacidad" desc={`${Math.round((local.opacity ?? 1) * 100)}%`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input
+              type="range"
+              min={0.3} max={1.0} step={0.05}
+              value={local.opacity ?? 1}
+              onChange={e => update({ opacity: Number(e.target.value) })}
+              style={{ width: '80px', accentColor: 'var(--red-bright)' }}
+            />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', minWidth: '36px' }}>
+              {Math.round((local.opacity ?? 1) * 100)}%
+            </span>
           </div>
+        </SettingsRow>
+
+        <SettingsRow label="Límite de Tokens" desc="Para cálculo de uso">
+          <input
+            type="number"
+            value={local.totalTokens || 1500}
+            onChange={e => update({ totalTokens: parseInt(e.target.value, 10) || 1500 })}
+            style={{
+              background: 'var(--bg-hover)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '4px 8px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              width: '80px',
+              outline: 'none'
+            }}
+          />
+        </SettingsRow>
+
+        <SettingsRow label="Color del Tema" desc="Personaliza el color de la interfaz">
+          <select
+            value={local.themeColor || 'red'}
+            onChange={e => update({ themeColor: e.target.value as any })}
+            style={{
+              background: 'var(--bg-hover)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '4px 8px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="red">Rojo (JARVIS)</option>
+            <option value="blue">Azul (Ciber)</option>
+            <option value="green">Verde (Matrix)</option>
+            <option value="purple">Morado (Synthwave)</option>
+          </select>
+        </SettingsRow>
+
+        {/* Sección: Notificaciones */}
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--red-bright)', letterSpacing: '0.12em', marginBottom: '8px', marginTop: '14px' }}>
+          ── NOTIFICACIONES ──
         </div>
 
-        {/* Footer Modal */}
-        <div className="pt-2 flex justify-end">
+        <SettingsRow label="Notificaciones Nativas" desc="Alertas de Windows cuando la cuota es baja">
+          <Toggle on={local.notificationsEnabled} onChange={v => update({ notificationsEnabled: v })} />
+        </SettingsRow>
+
+        <SettingsRow label="Sonido de Alertas">
+          <Toggle on={local.soundEnabled} onChange={v => update({ soundEnabled: v })} />
+        </SettingsRow>
+
+        {/* Info */}
+        <div style={{
+          marginTop: '16px',
+          padding: '10px 12px',
+          background: 'var(--red-dim)',
+          border: '1px solid var(--red-border)',
+          borderRadius: 'var(--radius-md)',
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'flex-start',
+        }}>
+          <Info size={12} style={{ color: 'var(--red-bright)', flexShrink: 0, marginTop: '1px' }} />
+          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            Los datos se leen directamente desde los archivos locales de{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>Antigravity IDE</strong>{' '}
+            instalado en tu equipo. Activa el Modo Demo si Antigravity no está instalado.
+          </p>
+        </div>
+
+        {/* Footer buttons */}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
-            className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold font-orbitron text-xs px-5 py-2 rounded-xl shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+            style={{
+              padding: '8px 16px',
+              background: 'transparent',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-secondary)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
           >
-            GUARDAR Y CERRAR
+            CANCELAR
+          </button>
+          <button
+            onClick={handleSave}
+            style={{
+              padding: '8px 20px',
+              background: 'var(--red-dim)',
+              border: '1px solid var(--red-border)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--red-bright)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 0 10px var(--red-glow)',
+            }}
+          >
+            GUARDAR
           </button>
         </div>
       </div>
     </div>
   );
-};
+}

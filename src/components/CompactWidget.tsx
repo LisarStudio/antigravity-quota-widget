@@ -1,6 +1,6 @@
 import React from 'react';
+import { RefreshCw, Maximize2 } from 'lucide-react';
 import { QuotaSnapshot, WidgetSettings } from '../types/quota';
-import { Zap, Maximize2, RefreshCw } from 'lucide-react';
 
 interface CompactWidgetProps {
   snapshot: QuotaSnapshot;
@@ -10,75 +10,103 @@ interface CompactWidgetProps {
   onExpand: () => void;
 }
 
-export const CompactWidget: React.FC<CompactWidgetProps> = ({
-  snapshot,
-  isRefreshing,
-  onRefresh,
-  onExpand,
-}) => {
-  const gemini5h = snapshot.gemini.fiveHour.remainingPercentage;
-  const claude5h = snapshot.claudeGpt.fiveHour.remainingPercentage;
-
-  const getColor = (pct: number) => {
-    if (pct > 50) return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/40';
-    if (pct > 25) return 'text-cyan-400 bg-cyan-500/20 border-cyan-500/40';
-    if (pct > 10) return 'text-amber-400 bg-amber-500/20 border-amber-500/40';
-    return 'text-rose-400 bg-rose-500/20 border-rose-500/40 animate-pulse';
-  };
+function MiniGauge({ pct }: { pct: number }) {
+  const r = 13;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - pct / 100);
+  const color = pct > 50 ? '#30D158' : pct > 25 ? '#FF9500' : '#FF2D2D';
 
   return (
-    <div className="drag-header select-none bg-slate-950/85 border border-cyan-500/40 backdrop-blur-xl rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-4 w-[460px]">
-      {/* Créditos Disponibles */}
-      <div className="flex items-center gap-2">
-        <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
-        <div>
-          <span className="font-orbitron font-extrabold text-sm text-white drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">
-            {snapshot.credits.availableCredits.toLocaleString()}
-          </span>
-          <span className="text-[9px] font-mono text-slate-400 block">CRÉDITOS IA</span>
+    <svg width="36" height="36" viewBox="0 0 36 36">
+      <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={3} />
+      <circle
+        cx="18" cy="18" r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform="rotate(-90 18 18)"
+        style={{ filter: `drop-shadow(0 0 3px ${color})`, transition: 'stroke-dashoffset 0.8s ease' }}
+      />
+      <text x="18" y="18" textAnchor="middle" dominantBaseline="middle"
+        fontSize="8" fontFamily="JetBrains Mono, Consolas, monospace" fontWeight="700" fill={color}
+      >
+        {pct}%
+      </text>
+    </svg>
+  );
+}
+
+export function CompactWidget({
+  snapshot, settings, isRefreshing, onRefresh, onExpand
+}: CompactWidgetProps) {
+  const { gemini, claudeGpt, credits } = snapshot;
+
+  const isElectron = typeof window !== 'undefined' && !!(window as any).electronAPI;
+  const electronAPI = isElectron ? (window as any).electronAPI : null;
+
+  return (
+    <div className="compact-widget drag-handle">
+      {/* Logo */}
+      <div style={{
+        width: '24px', height: '24px', flexShrink: 0,
+        background: 'var(--red-dim)',
+        border: '1px solid var(--red-border)',
+        borderRadius: '6px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 0 8px var(--red-glow)',
+      }}>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+          <path d="M8 2L13 5V11L8 14L3 11V5L8 2Z" stroke="var(--red-bright)" strokeWidth="1.5" fill="none"/>
+          <path d="M8 6L10 7.5V10.5L8 12L6 10.5V7.5L8 6Z" fill="var(--red-core)" opacity="0.9"/>
+        </svg>
+      </div>
+
+      {/* Créditos */}
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '7px', color: '#ffffff', opacity: 0.6, letterSpacing: '0.1em' }}>CRÉDITOS</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>
+          {credits.availableCredits.toLocaleString('es-CL')}
         </div>
       </div>
 
-      {/* Cuotas de 5 horas: Gemini vs Claude */}
-      <div className="flex items-center gap-3">
-        {/* Gemini 5h */}
-        <div className="flex items-center gap-1.5 font-mono text-xs">
-          <span className="text-slate-400 text-[10px]">Gemini 5h:</span>
-          <span className={`px-2 py-0.5 rounded-full border font-bold ${getColor(gemini5h)}`}>
-            {gemini5h}%
-          </span>
-        </div>
+      {/* Divider */}
+      <div style={{ width: '1px', height: '28px', background: 'var(--border-subtle)' }} />
 
-        {/* Claude/GPT 5h */}
-        <div className="flex items-center gap-1.5 font-mono text-xs">
-          <span className="text-slate-400 text-[10px]">Claude 5h:</span>
-          <span className={`px-2 py-0.5 rounded-full border font-bold ${getColor(claude5h)}`}>
-            {claude5h}%
-          </span>
-        </div>
+      {/* Gemini */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
+        <MiniGauge pct={gemini.fiveHour.remainingPercentage} />
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '7px', color: '#ffffff', fontWeight: 'bold', letterSpacing: '0.05em' }}>GMN</span>
       </div>
 
-      {/* Acciones */}
-      <div className="no-drag flex items-center gap-1.5">
-        <button
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className={`p-1.5 rounded-lg bg-slate-800/80 hover:bg-cyan-950/80 text-slate-300 hover:text-cyan-400 border border-slate-700 transition-all cursor-pointer ${
-            isRefreshing ? 'animate-spin text-cyan-400' : ''
-          }`}
-          title="Actualizar datos"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+      {/* Claude */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
+        <MiniGauge pct={claudeGpt.fiveHour.remainingPercentage} />
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '7px', color: '#ffffff', fontWeight: 'bold', letterSpacing: '0.05em' }}>CLD</span>
+      </div>
 
-        <button
-          onClick={onExpand}
-          className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-cyan-950/80 text-slate-300 hover:text-cyan-400 border border-slate-700 transition-all cursor-pointer"
-          title="Expandir Widget"
-        >
-          <Maximize2 className="w-3.5 h-3.5" />
+      {/* Status dot */}
+      <div className={`status-dot ${snapshot.connectionStatus === 'CONNECTED' ? 'connected' : snapshot.connectionStatus === 'DEMO_MODE' ? 'demo' : 'disconnected'}`} />
+
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
+
+      {/* Buttons */}
+      <div className="no-drag" style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+        <button className="icon-btn" onClick={onRefresh} disabled={isRefreshing} title="Actualizar">
+          <RefreshCw size={10} style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }} />
         </button>
+        <button className="icon-btn" onClick={onExpand} title="Expandir">
+          <Maximize2 size={10} />
+        </button>
+        {isElectron && (
+          <button className="icon-btn danger" onClick={() => electronAPI?.closeApp()} title="Cerrar">
+            <span style={{ fontSize: '12px', lineHeight: 1, color: '#ffffff' }}>×</span>
+          </button>
+        )}
       </div>
     </div>
   );
-};
+}

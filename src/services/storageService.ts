@@ -1,8 +1,8 @@
 import { WidgetSettings } from '../types/quota';
 import { NotificationService } from './notificationService';
 
-const STORAGE_KEY_SETTINGS = 'antigravity_quota_settings_v1';
-const STORAGE_KEY_HISTORY = 'antigravity_quota_history_v1';
+const STORAGE_KEY_SETTINGS = 'antigravity_quota_settings_v2';
+const STORAGE_KEY_HISTORY = 'antigravity_quota_history_v2';
 
 export class StorageService {
   public static defaultSettings: WidgetSettings = {
@@ -14,6 +14,8 @@ export class StorageService {
     notificationsEnabled: true,
     soundEnabled: true,
     notificationRules: NotificationService.defaultRules,
+    themeColor: 'red',
+    totalTokens: 1500,
   };
 
   public static loadSettings(): WidgetSettings {
@@ -21,7 +23,8 @@ export class StorageService {
       const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
       if (!raw) return this.defaultSettings;
       const parsed = JSON.parse(raw);
-      return { ...this.defaultSettings, ...parsed };
+      // Siempre arrancar en EXPANDED para evitar que se quede en compacto
+      return { ...this.defaultSettings, ...parsed, mode: 'EXPANDED' };
     } catch (e) {
       return this.defaultSettings;
     }

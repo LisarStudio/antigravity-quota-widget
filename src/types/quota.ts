@@ -31,6 +31,10 @@ export interface CreditStatus {
   usageHealth: UsageHealth;
 }
 
+// Aliases for component compatibility
+export type Credits = CreditStatus;
+export type ModelQuotaGroup = QuotaGroup;
+
 export interface QuotaSnapshot {
   timestamp: number;
   credits: CreditStatus;
@@ -40,6 +44,9 @@ export interface QuotaSnapshot {
   lastSyncedAt: string; // Formatted ISO / local string
   activeAlerts: string[];
   estimatedVelocityTokSec: number;
+  planName?: string;
+  userEmail?: string;
+  activeIDE?: string; // 'antigravity' | 'vscode' | 'cursor' | 'unknown'
 }
 
 export interface NotificationRule {
@@ -61,4 +68,6 @@ export interface WidgetSettings {
   notificationsEnabled: boolean;
   soundEnabled: boolean;
   notificationRules: NotificationRule[];
+  themeColor?: 'red' | 'blue' | 'green' | 'purple';
+  totalTokens?: number;
 }

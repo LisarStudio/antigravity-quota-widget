@@ -1,90 +1,87 @@
-# 💎 ANTIGRAVITY AI MONITOR — Desktop Widget Premium
+# Antigravity AI Monitor 🛸
 
-> **Widget flotante de escritorio de alta gama para monitorización en tiempo real de cuotas, créditos y límites de modelos de IA en Antigravity (Gemini, Claude & GPT). Inspirado en la estética nativa de macOS Sonoma y paneles HUD futuristas tipo JARVIS.**
+> Widget de escritorio para monitoreo en tiempo real de cuotas y tokens de modelos AI. Compatible con **Antigravity IDE**, **VS Code + GitHub Copilot**, y **Cursor IDE**.
 
----
-
-## 🌟 Características Principales
-
-1. **Estética macOS Sonoma + JARVIS HUD**:
-   - Material negro-grafito/azulino translúcido con efecto *glassmorphism* real (`backdrop-filter: blur(24px)`).
-   - Bordes superfinos con iluminación cian suave (`#00F0FF`) y acentos en azul eléctrico, violeta y verde.
-   - Esquinas redondeadas (20px), sombreados suaves y profundidad mediante capas.
-
-2. **Información Muestra en Tiempo Real (Antigravity Settings > Models)**:
-   - **Créditos de IA disponibles** en número grande tipo Orbitron.
-   - **Estado de "AI Credit Overages"** (Activado vs Inactivo).
-   - **Semicírculo de Salud Global** con indicadores *Normal*, *Elevado* o *Crítico*.
-   - **Tarjeta Gemini Models**: Cuota semanal restante %, cuota de 5 horas restante %, temporizadores de cuenta regresiva regresivos y gráfica sparkline de tendencia histórica.
-   - **Tarjeta Claude & GPT Models**: Cuota semanal restante %, cuota de 5 horas restante %, temporizadores y gráfica sparkline.
-   - **Pie del Widget**: Próximo reinicio más cercano, velocidad estimada de consumo (`tok/s`), alertas activas e indicador de sincronización.
-
-3. **Arquitectura Limpia & Capa de Abstracción (`AntigravityQuotaProvider`)**:
-   - Capa de abstracción independiente para la obtención de métricas.
-   - Modos de conexión explícitos: `CONNECTED`, `STALE`, `DISCONNECTED`, `AUTH_ERROR` y `DEMO_MODE`.
-   - **Modo Demostración (Demo Mode)** aislado para desarrollo y visualización de estados sin alterar ni falsear los datos reales.
-
-4. **Sistema Notificaciones Nativas & Sonido HUD**:
-   - Alertas nativas del sistema cuando una cuota baja del 25%, del 10% (crítica) o llega a 0%.
-   - Notificación de activación de *AI Credit Overages*.
-   - Cooldown configurable (período de silencio) para prevenir notificaciones duplicadas.
-   - Efectos de sonido HUD synthesized con *Web Audio API*.
-
-5. **Modo Compacto & Modo Expandido**:
-   - **Modo Expandido**: Vista completa con todas las métricas, tarjetas detalladas y sparklines.
-   - **Modo Compacto**: Barrita minimalista de alta densidad con créditos, salud y medidores de 5h.
-   - Ventana sin marco (*Frameless*), arrastrable (*Drag & Drop*), opacidad ajustable y fijable al frente (*Always-on-top*).
+![Electron](https://img.shields.io/badge/Electron-30-47848F?logo=electron&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.2-3178C6?logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
 
 ---
 
-## 🏗️ Arquitectura del Proyecto
+## ✨ Características
 
-```
-src/
-├── types/
-│   └── quota.ts               # Definiciones de tipos estrictos TypeScript (QuotaSnapshot, CreditStatus, etc.)
-├── providers/
-│   └── AntigravityQuotaProvider.ts # Capa de abstracción para la lectura y normalización de cuotas
-├── services/
-│   ├── notificationService.ts # Gestión de notificaciones nativas, reglas de umbral y sonidos SFX
-│   └── storageService.ts      # Persistencia local segura de configuración e historial
-├── components/
-│   ├── Header.tsx             # Encabezado con estado de conexión, sync manual y controles de ventana
-│   ├── SummaryCard.tsx        # Resumen superior de créditos, overages y arco de salud global
-│   ├── ModelQuotaCard.tsx     # Tarjeta detallada para modelos Gemini y Claude/GPT con sparklines
-│   ├── FooterStatus.tsx       # Pie con cuenta regresiva, velocidad tok/s y contador de alertas
-│   ├── CompactWidget.tsx      # Barrita compacta de escritorio estilo macOS Sonoma
-│   └── SettingsModal.tsx      # Panel de configuración de opacidad, notificaciones y Modo Demo
-├── styles/
-│   └── index.css              # Estilos Tailwind CSS + utilidades glassmorphism
-└── App.tsx                    # Orquestador principal de estado y renders
-```
+- 🔄 **Sincronización en tiempo real** con el LanguageServer local (Codeium/Antigravity)
+- 🤖 **Detección automática de IDE** — Detecta si usas Antigravity, VS Code, Cursor u otro IDE
+- 📊 **Cuotas Gemini y Claude/GPT** — Monitoreo semanal y por ventana de 5 horas
+- ⏱️ **Countdown en tiempo real** — Temporizador de recarga con cuenta regresiva
+- 🔔 **Notificaciones nativas** — Alertas de cuota baja (< 10%), 30 min antes de recarga, y recarga completa
+- 🎨 **Temas de color** — Rojo (JARVIS), Azul (Ciber), Verde (Matrix), Morado (Synth)
+- 📌 **Siempre encima** — Se mantiene visible sobre otras ventanas
+- 📉 **Sparkline de tendencia** — Gráfico de uso de las últimas 10 lecturas
+- 🖥️ **Modo compacto** — Vista reducida tipo pill para no estorbar mientras programas
+- 🪟 **Bandeja del sistema** — Se queda en la bandeja de Windows al cerrar
 
----
+## 🚀 Instalación
 
-## 💻 Instalación y Ejecución en Windows / macOS
+### Instalador (Recomendado)
+Descarga el instalador desde la sección de [Releases](../../releases):
+- `Antigravity AI Monitor Setup 1.0.0.exe`
 
-### 1. Ejecutar Servidor Web / Vista Local:
+### Desde el código fuente
 ```bash
-npm run dev
-# o bien
-node server.js
-```
-Accede desde tu navegador en:  
-👉 **[http://localhost:4600](http://localhost:4600)**
-
-### 2. Compilar Producción Vite:
-```bash
-npm run build
+git clone https://github.com/LisarStudio/antigravity-quota-widget.git
+cd antigravity-quota-widget
+npm install
+npm run dev        # Modo desarrollo
+npm run build      # Build producción
 ```
 
-### 3. Ejecutar como Aplicación Novedosa de Escritorio (Electron):
-```bash
-npm run electron
+### Generar instalador localmente
+```powershell
+.\build-installer.ps1
+```
+El instalador se genera en `release/Antigravity AI Monitor Setup 1.0.0.exe`
+
+## 🔧 IDEs Soportados
+
+| IDE | Estado | Notas |
+|-----|--------|-------|
+| Antigravity IDE | ✅ Completo | Sincronización nativa de cuotas via LanguageServer |
+| VS Code + GitHub Copilot | ✅ Detectado | Detecta procesos de VS Code y Copilot Agent |
+| Cursor IDE | ✅ Detectado | Detección automática del proceso |
+
+## 📦 Stack Tecnológico
+
+- **Frontend**: React 18 + TypeScript + Vite 5
+- **Desktop**: Electron 30
+- **Backend local**: Express.js (servidor de datos integrado)
+- **Diseño**: CSS custom con variables temáticas + JetBrains Mono + Inter
+- **Empaquetado**: electron-builder (NSIS installer para Windows)
+
+## 📁 Estructura del Proyecto
+
+```
+antigravity-quota-widget/
+├── main.js                 # Proceso principal Electron
+├── preload.js              # Puente seguro IPC
+├── server.cjs              # Backend local (API de cuotas)
+├── src/
+│   ├── App.tsx             # Componente principal
+│   ├── index.css           # Design system CSS
+│   ├── components/         # UI components
+│   ├── providers/          # Data fetching layer
+│   ├── services/           # Storage & notifications
+│   └── types/              # TypeScript types
+├── build/                  # Assets (icono)
+├── build-installer.ps1     # Script de empaquetado
+└── Lanzar-Widget.bat       # Ejecutar modo desarrollo
 ```
 
----
+## 🎨 Capturas
 
-## 📄 Licencia y Autores
+El widget incluye una interfaz estilo cyberpunk/JARVIS con glassmorphism y efectos de neon.
 
-Desarrollado para la suite **Antigravity IDE** — © 2026.
+## 📄 Licencia
+
+MIT © [LisarStudio](https://github.com/LisarStudio)

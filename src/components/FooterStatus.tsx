@@ -1,44 +1,77 @@
 import React from 'react';
 import { QuotaSnapshot } from '../types/quota';
-import { Activity, Bell, Hourglass, CheckCircle2 } from 'lucide-react';
 
 interface FooterStatusProps {
   snapshot: QuotaSnapshot;
 }
 
-export const FooterStatus: React.FC<FooterStatusProps> = ({ snapshot }) => {
-  const alertsCount = snapshot.activeAlerts ? snapshot.activeAlerts.length : 0;
+export function FooterStatus({ snapshot }: FooterStatusProps) {
+  const { estimatedVelocityTokSec, lastSyncedAt, connectionStatus } = snapshot;
 
   return (
-    <footer className="bg-slate-950/80 border-t border-slate-800/80 px-4 py-2.5 rounded-b-2xl flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-slate-400 select-none">
-      {/* Próximo Reinicio */}
-      <div className="flex items-center gap-1.5">
-        <Hourglass className="w-3 h-3 text-cyan-400 animate-spin" style={{ animationDuration: '6s' }} />
-        <span>Próximo reset:</span>
-        <span className="text-slate-200 font-bold">{snapshot.gemini.fiveHour.resetTimeLabel}</span>
-      </div>
-
-      {/* Velocidad de Consumo */}
-      <div className="flex items-center gap-1.5">
-        <Activity className="w-3 h-3 text-emerald-400" />
-        <span>Velocidad:</span>
-        <span className="text-emerald-300 font-bold">⚡ {snapshot.estimatedVelocityTokSec} tok/s</span>
-      </div>
-
-      {/* Alertas Activas */}
-      <div className="flex items-center gap-1">
-        {alertsCount > 0 ? (
-          <span className="text-rose-400 font-bold flex items-center gap-1 bg-rose-950/50 px-2 py-0.5 rounded-full border border-rose-500/30">
-            <Bell className="w-3 h-3 text-rose-400 animate-bounce" />
-            {alertsCount} Alerta{alertsCount > 1 ? 's' : ''}
-          </span>
-        ) : (
-          <span className="text-slate-400 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-            Sin alertas
-          </span>
+    <footer style={{
+      borderTop: '1px solid var(--border-subtle)',
+      padding: '8px 14px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      background: 'rgba(5,5,10,0.6)',
+      flexShrink: 0,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Velocidad */}
+        {estimatedVelocityTokSec > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div className="data-label">VELOCIDAD</div>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '10px',
+              color: 'var(--cyan-info)',
+              fontWeight: 600,
+            }}>
+              {estimatedVelocityTokSec.toFixed(1)} tok/s
+            </span>
+          </div>
         )}
+        {/* Alertas activas */}
+        {snapshot.activeAlerts && snapshot.activeAlerts.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ color: 'var(--red-bright)', fontSize: '9px' }}>⚠</span>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '8px',
+              color: 'var(--red-bright)',
+              maxWidth: '160px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {snapshot.activeAlerts[0]}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Última sincronización */}
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '8px',
+          color: 'var(--text-dim)',
+          letterSpacing: '0.06em',
+        }}>
+          UPD: {lastSyncedAt}
+        </div>
+        {/* Versión */}
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '8px',
+          color: 'var(--border-subtle)',
+          letterSpacing: '0.06em',
+        }}>
+          v1.0.0
+        </div>
       </div>
     </footer>
   );
-};
+}

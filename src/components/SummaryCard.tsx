@@ -1,127 +1,171 @@
-import React from 'react';
-import { CreditStatus } from '../types/quota';
-import { Zap, CreditCard, ShieldCheck, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { Credits } from '../types/quota';
 
 interface SummaryCardProps {
-  credits: CreditStatus;
+  credits: Credits;
   globalPercentage: number;
 }
 
-export const SummaryCard: React.FC<SummaryCardProps> = ({ credits, globalPercentage }) => {
-  const getHealthBadge = () => {
-    switch (credits.usageHealth) {
-      case 'NORMAL':
-        return {
-          label: 'CONSUMO NORMAL',
-          color: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40',
-          desc: 'Tus cuotas y créditos están en niveles óptimos de operación.',
-          icon: ShieldCheck,
-        };
-      case 'ELEVATED':
-        return {
-          label: 'CONSUMO ELEVADO',
-          color: 'text-amber-400 border-amber-500/30 bg-amber-950/40',
-          desc: 'La ventana de 5 horas presenta un consumo intensivo reciente.',
-          icon: AlertTriangle,
-        };
-      case 'CRITICAL':
-        return {
-          label: 'CONSUMO CRÍTICO',
-          color: 'text-rose-400 border-rose-500/30 bg-rose-950/40 animate-pulse',
-          desc: 'Atención: Las cuotas de 5h se encuentran cerca del límite.',
-          icon: AlertTriangle,
-        };
-    }
+function AnimatedNumber({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const prev = useRef(value);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const start = prev.current;
+    const end = value;
+    const diff = end - start;
+    const duration = 800;
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(start + diff * ease);
+      if (ref.current) ref.current.textContent = current.toLocaleString('es-CL');
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+
+    requestAnimationFrame(animate);
+    prev.current = value;
+  }, [value]);
+
+  return <span ref={ref}>{value.toLocaleString('es-CL')}</span>;
+}
+
+function GaugeArc({ percentage, size = 100 }: { percentage: number; size?: number }) {
+  const radius = size * 0.38;
+  const cx = size / 2;
+  const cy = size / 2;
+  const startAngle = -210;
+  const sweepAngle = 240;
+
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+  const arcPath = (start: number, sweep: number) => {
+    const end = start + sweep;
+    const x1 = cx + radius * Math.cos(toRad(start));
+    const y1 = cy + radius * Math.sin(toRad(start));
+    const x2 = cx + radius * Math.cos(toRad(end));
+    const y2 = cy + radius * Math.sin(toRad(end));
+    const large = sweep > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2}`;
   };
 
-  const health = getHealthBadge();
-  const HealthIcon = health.icon;
+  const fillSweep = (sweepAngle * percentage) / 100;
 
-  // Calculo de stroke para semicírculo SVG (circunferencia r=42 -> 263.8, semicírculo ~131.9)
-  const strokeDashoffset = 132 - (132 * (globalPercentage / 100));
+  const color = percentage > 50
+    ? 'var(--green-ok)'
+    : percentage > 25
+    ? 'var(--amber-warn)'
+    : 'var(--red-bright)';
+
+  const trackColor = 'rgba(255,255,255,0.06)';
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800/80 hover:border-cyan-500/30 rounded-2xl p-4 backdrop-blur-md transition-all shadow-lg hover:shadow-cyan-500/5 group relative overflow-hidden">
-      {/* Resplandor ambiental de fondo */}
-      <div className="absolute -top-12 -right-12 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ overflow: 'visible' }}>
+      {/* Track */}
+      <path
+        d={arcPath(startAngle, sweepAngle)}
+        fill="none"
+        stroke={trackColor}
+        strokeWidth={6}
+        strokeLinecap="round"
+      />
+      {/* Fill */}
+      <path
+        d={arcPath(startAngle, fillSweep)}
+        fill="none"
+        stroke={color}
+        strokeWidth={6}
+        strokeLinecap="round"
+        style={{
+          filter: `drop-shadow(0 0 5px ${color})`,
+          transition: 'all 1s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      />
+      {/* Center text */}
+      <text
+        x={cx}
+        y={cy - 4}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={size * 0.18}
+        fontWeight="700"
+        fontFamily="JetBrains Mono, monospace"
+        fill={color}
+      >
+        {percentage}%
+      </text>
+      <text
+        x={cx}
+        y={cy + size * 0.14}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={size * 0.08}
+        fontFamily="JetBrains Mono, monospace"
+        fill="rgba(240,240,255,0.35)"
+        letterSpacing="1"
+      >
+        GLOBAL
+      </text>
+    </svg>
+  );
+}
 
-      <div className="flex items-center justify-between gap-4">
-        {/* Izquierda: Créditos Disponibles */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 font-semibold tracking-wider uppercase">
-            <Zap className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            <span>CRÉDITOS DE IA DISPONIBLES</span>
-          </div>
+export function SummaryCard({ credits, globalPercentage }: SummaryCardProps) {
+  const healthClass = credits.usageHealth === 'CRITICAL'
+    ? 'critical'
+    : credits.usageHealth === 'ELEVATED'
+    ? 'warning'
+    : '';
 
-          <div className="flex items-baseline gap-2">
-            <span className="font-orbitron text-3xl font-black text-white tracking-tight drop-shadow-[0_0_12px_rgba(0,240,255,0.3)]">
-              {credits.availableCredits.toLocaleString()}
-            </span>
-            <span className="text-xs font-mono text-slate-400">pts</span>
-          </div>
+  const badgeClass = credits.overagesActive ? 'badge warn' : 'badge ok';
+  const badgeText = credits.overagesActive ? 'ACTIVO' : 'INACTIVO';
+  const badgeDot = credits.overagesActive ? '●' : '●';
 
-          <div className="flex items-center gap-2 pt-1">
-            <div className="flex items-center gap-1 text-[11px] text-slate-300 font-mono">
-              <CreditCard className="w-3 h-3 text-slate-400" />
-              <span>AI Credit Overages:</span>
-            </div>
-            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-              credits.overagesActive
-                ? 'text-amber-300 border-amber-500/40 bg-amber-500/10'
-                : 'text-slate-400 border-slate-700 bg-slate-800/50'
-            }`}>
-              {credits.overagesLabel}
-            </span>
-          </div>
-        </div>
-
-        {/* Derecha: Indicador Semicircular de Salud Global */}
-        <div className="flex flex-col items-center justify-center relative min-w-[100px]">
-          <svg className="w-24 h-16 transform -rotate-90" viewBox="0 0 100 60">
-            <path
-              d="M 10 50 A 40 40 0 0 1 90 50"
-              fill="none"
-              stroke="rgba(30, 41, 59, 0.8)"
-              strokeWidth="8"
-              strokeLinecap="round"
-            />
-            <path
-              d="M 10 50 A 40 40 0 0 1 90 50"
-              fill="none"
-              stroke={
-                globalPercentage > 50
-                  ? '#10B981'
-                  : globalPercentage > 25
-                  ? '#06B6D4'
-                  : globalPercentage > 10
-                  ? '#F59E0B'
-                  : '#EF4444'
-              }
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeDasharray="132"
-              strokeDashoffset={strokeDashoffset}
-              className="transition-all duration-700 ease-out filter drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]"
-            />
-          </svg>
-
-          <div className="absolute top-4 text-center">
-            <span className="font-orbitron font-extrabold text-lg text-white drop-shadow-md">
-              {Math.round(globalPercentage)}%
-            </span>
-            <span className="block text-[8px] font-mono text-slate-400 uppercase tracking-wider">
-              ESTADO GLOBAL
-            </span>
-          </div>
-        </div>
+  return (
+    <div className={`card ${healthClass}`} style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+      {/* Gauge */}
+      <div style={{ flexShrink: 0 }}>
+        <GaugeArc percentage={globalPercentage} size={100} />
       </div>
 
-      {/* Banner Corto de Salud */}
-      <div className={`mt-3 pt-2.5 border-t border-slate-800/80 flex items-center gap-2 text-[11px] font-mono rounded-lg px-2.5 py-1.5 border ${health.color}`}>
-        <HealthIcon className="w-3.5 h-3.5 shrink-0" />
-        <span className="font-bold uppercase tracking-wider">{health.label}:</span>
-        <span className="text-slate-300 text-[10px] truncate">{health.desc}</span>
+      {/* Right panel */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* Créditos */}
+        <div>
+          <div className="data-label" style={{ marginBottom: '3px' }}>Créditos AI Disponibles</div>
+          <div className="data-value large" style={{ color: globalPercentage > 50 ? 'var(--green-ok)' : globalPercentage > 25 ? 'var(--amber-warn)' : 'var(--red-bright)' }}>
+            <AnimatedNumber value={credits.availableCredits} />
+          </div>
+        </div>
+
+        <div className="divider" style={{ margin: '0' }} />
+
+        {/* AI Credit Overages */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div className="data-label" style={{ marginBottom: '2px' }}>AI Credit Overages</div>
+            <div className="data-value" style={{ fontSize: '11px' }}>
+              {credits.overagesLabel}
+            </div>
+          </div>
+          <span className={badgeClass}>
+            <span style={{ fontSize: '6px' }}>{badgeDot}</span>
+            {badgeText}
+          </span>
+        </div>
+
+        {/* Salud */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="data-label">Estado del Sistema:</div>
+          <span className={`badge ${credits.usageHealth === 'CRITICAL' ? 'critical' : credits.usageHealth === 'ELEVATED' ? 'warn' : 'ok'}`}>
+            {credits.usageHealth}
+          </span>
+        </div>
       </div>
     </div>
   );
-};
+}

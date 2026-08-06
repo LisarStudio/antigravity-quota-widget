@@ -110,8 +110,8 @@ export class AntigravityQuotaProvider {
     formattedTime: string,
     status: ConnectionStatus
   ): QuotaSnapshot {
-    const geminiWeeklyPct = data.geminiWeeklyPct ?? 82;
-    const geminiFivePct = data.geminiFivePct ?? 14;
+    const geminiWeeklyPct = data.geminiWeeklyPct ?? 100;
+    const geminiFivePct = data.geminiFivePct ?? 100;
     const claudeWeeklyPct = data.claudeWeeklyPct ?? 100;
     const claudeFivePct = data.claudeFivePct ?? 100;
 
@@ -123,7 +123,7 @@ export class AntigravityQuotaProvider {
     return {
       timestamp: now.getTime(),
       credits: {
-        availableCredits: data.availableCredits ?? 1500,
+        availableCredits: data.availableCredits ?? 0,
         overagesActive: data.overagesActive ?? false,
         overagesLabel: data.overagesActive ? 'Activado (Sin bloqueo)' : 'Inactivo',
         usageHealth: health,
@@ -133,35 +133,38 @@ export class AntigravityQuotaProvider {
         displayName: 'Gemini Models',
         weekly: {
           remainingPercentage: geminiWeeklyPct,
-          resetTimeRemainingSeconds: 504000, // ~5d 20h
-          resetTimeLabel: data.geminiWeeklyRefresh || '5 días, 20 horas',
+          resetTimeRemainingSeconds: data.geminiWeeklySecs ?? 0,
+          resetTimeLabel: data.geminiWeeklyRefresh || 'Inactivo',
         },
         fiveHour: {
           remainingPercentage: geminiFivePct,
-          resetTimeRemainingSeconds: 9780, // ~2h 43m
-          resetTimeLabel: data.geminiFiveRefresh || '2 horas, 43 minutos',
+          resetTimeRemainingSeconds: data.geminiFiveSecs ?? 0,
+          resetTimeLabel: data.geminiFiveRefresh || 'Inactivo',
         },
-        historyTrend: data.geminiHistory || [95, 90, 88, 85, 82, 80, 75, 50, 30, geminiFivePct],
+        historyTrend: data.geminiHistory || [100, 100, 100, 100, 100, 100, 100, 100, 100, geminiFivePct],
       },
       claudeGpt: {
         familyName: 'claude_gpt',
         displayName: 'Claude & GPT Models',
         weekly: {
           remainingPercentage: claudeWeeklyPct,
-          resetTimeRemainingSeconds: 604800,
-          resetTimeLabel: data.claudeWeeklyRefresh || '7 días',
+          resetTimeRemainingSeconds: data.claudeWeeklySecs ?? 0,
+          resetTimeLabel: data.claudeWeeklyRefresh || 'Inactivo',
         },
         fiveHour: {
           remainingPercentage: claudeFivePct,
-          resetTimeRemainingSeconds: 18000,
-          resetTimeLabel: data.claudeFiveRefresh || '5 horas',
+          resetTimeRemainingSeconds: data.claudeFiveSecs ?? 0,
+          resetTimeLabel: data.claudeFiveRefresh || 'Inactivo',
         },
         historyTrend: data.claudeHistory || [100, 100, 100, 100, 100, 100, 100, 100, 100, claudeFivePct],
       },
       connectionStatus: status,
       lastSyncedAt: formattedTime,
-      activeAlerts: minPct < 20 ? [`⚠️ Alerta de cuota crítica: Gemini 5-Hour al ${geminiFivePct}%`] : [],
-      estimatedVelocityTokSec: data.velocity || 42.5,
+      activeAlerts: minPct < 20 ? [`⚠️ Alerta de cuota crítica: Gemini al ${geminiFivePct}%`] : [],
+      estimatedVelocityTokSec: data.velocity || 0,
+      planName: data.planName || 'Starter Quota',
+      userEmail: data.userEmail || '',
+      activeIDE: data.activeIDE || 'unknown',
     };
   }
 
