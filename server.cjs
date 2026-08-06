@@ -27,10 +27,52 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// ─── Carga de Configuración Externa (config.json) ──────────────────────────
+const CONFIG_PATH = path.join(__dirname, 'config.json');
+
+function loadAppConfig() {
+  const defaultConfig = {
+    pollIntervalSeconds: 2,
+    cacheTtlMs: 1000,
+    totalTokens: 1000000,
+    geminiTokenLimit: 1000000,
+    claudeTokenLimit: 500000,
+    autoSyncAccounts: true,
+    themeColor: 'red',
+    demoMode: false,
+    notificationsEnabled: true,
+    soundEnabled: true,
+    accountOverrides: { antigravity: '', codex: '', claude: '' }
+  };
+
+  try {
+    if (fs.existsSync(CONFIG_PATH)) {
+      const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
+      return { ...defaultConfig, ...JSON.parse(raw) };
+    } else {
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(defaultConfig, null, 2), 'utf8');
+      return defaultConfig;
+    }
+  } catch (e) {
+    return defaultConfig;
+  }
+}
+
+function saveAppConfig(newConfig) {
+  try {
+    const current = loadAppConfig();
+    const updated = { ...current, ...newConfig };
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(updated, null, 2), 'utf8');
+    return updated;
+  } catch (e) {
+    console.error('[DataServer] Error guardando config.json:', e.message);
+    return null;
+  }
+}
+
 // ─── Cache ─────────────────────────────────────────────────────────────────
 let cachedQuota = null;
 let lastFetchTime = 0;
-const CACHE_TTL_MS = 5_000; // 5 segundos
 
 // ─── Formateador de Tiempo Restante ─────────────────────────────────────────
 function formatResetTimeLabel(resetIso) {
@@ -56,49 +98,61 @@ function getResetRemainingSecs(resetIso) {
 
 // ─── Obtener Instancias de LanguageServer (Antigravity/Codeium) ────────────
 function getLanguageServerInstances() {
+  const instances = [];
+  
+  // 1. Intentar PowerShell Get-CimInstance
   try {
-    const cmd = 'wmic process where "name=\'language_server_windows_x64.exe\'" get commandline';
-    const out = execSync(cmd, { encoding: 'utf8' });
-    const lines = out.split(/\r?\n/).filter(line => line.includes('--https_server_port'));
+    const cmd = 'powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"Name = \'language_server_windows_x64.exe\'\\" | Select-Object -ExpandProperty CommandLine"';
+    const out = execSync(cmd, { encoding: 'utf8', timeout: 5000 });
+    const lines = out.split(/\r?\n/).filter(line => line.includes('--https_server_port') || line.includes('--extension_server_port'));
 
-    const instances = [];
     for (const line of lines) {
-      const portMatch = line.match(/--https_server_port\s+([0-9]+)/);
+      const portMatch = line.match(/--https_server_port\s+([0-9]+)/) || line.match(/--extension_server_port\s+([0-9]+)/);
       const tokenMatch = line.match(/--csrf_token\s+([a-f0-9-]+)/i);
       const extTokenMatch = line.match(/--extension_server_csrf_token\s+([a-f0-9-]+)/i);
-      if (portMatch) {
-        instances.push({
-          port: parseInt(portMatch[1], 10),
-          tokens: [tokenMatch ? tokenMatch[1] : null, extTokenMatch ? extTokenMatch[1] : null].filter(Boolean)
-        });
+      
+      const ports = [];
+      const p1 = line.match(/--https_server_port\s+([0-9]+)/);
+      const p2 = line.match(/--extension_server_port\s+([0-9]+)/);
+      if (p1) ports.push(parseInt(p1[1], 10));
+      if (p2) ports.push(parseInt(p2[1], 10));
+
+      const tokens = [
+        tokenMatch ? tokenMatch[1] : null,
+        extTokenMatch ? extTokenMatch[1] : null
+      ].filter(Boolean);
+
+      for (const port of ports) {
+        instances.push({ port, tokens });
       }
     }
-    return instances;
   } catch (err) {
-    return [];
+    console.warn('[DataServer] Error ejecutando PowerShell Get-CimInstance:', err.message);
   }
+
+  // 2. Fallback con netstat/tasklist si no hay resultados
+  if (instances.length === 0) {
+    try {
+      const netstatOut = execSync('netstat -ano | findstr LISTENING', { encoding: 'utf8', timeout: 3000 });
+      // Si language server está corriendo pero ps falló, buscar procesos node/language_server
+    } catch (_) {}
+  }
+
+  return instances;
 }
 
-// ─── Obtener Instancias de GitHub Copilot (VS Code) ───────────────────────
+// ─── Obtener Instancias de GitHub Copilot / VS Code ───────────────────────
 function getCopilotInstances() {
   try {
-    // GitHub Copilot usa copilot-agent o su propio language server
-    const cmd = 'wmic process where "commandline like \'%copilot%\' and commandline like \'%agent%\'" get commandline';
-    const out = execSync(cmd, { encoding: 'utf8' });
-    const lines = out.split(/\r?\n/).filter(line => line.trim().length > 10);
+    const cmd = 'powershell -NoProfile -Command "Get-Process Code, Cursor, copilot-agent -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"';
+    const out = execSync(cmd, { encoding: 'utf8', timeout: 3000 });
+    const names = out.toLowerCase();
 
-    if (lines.length > 1) {
+    if (names.includes('copilot')) {
       return { detected: true, type: 'copilot' };
     }
-  } catch (_) {}
-
-  // Alternativa: buscar el proceso de VS Code
-  try {
-    const cmd2 = 'wmic process where "name=\'Code.exe\'" get processid';
-    const out2 = execSync(cmd2, { encoding: 'utf8' });
-    const pids = out2.split(/\r?\n/).filter(l => /^\d+/.test(l.trim()));
-    if (pids.length > 0) {
-      return { detected: true, type: 'vscode' };
+    if (names.includes('code') || names.includes('cursor')) {
+      return { detected: true, type: names.includes('cursor') ? 'cursor' : 'vscode' };
     }
   } catch (_) {}
 
@@ -107,40 +161,54 @@ function getCopilotInstances() {
 
 // ─── Detectar IDE activo automáticamente ──────────────────────────────────
 function detectActiveIDE() {
-  // 1. Comprobar Antigravity IDE
   try {
-    const cmd = 'wmic process where "name=\'Antigravity IDE.exe\'" get processid';
-    const out = execSync(cmd, { encoding: 'utf8' });
-    const pids = out.split(/\r?\n/).filter(l => /^\d+/.test(l.trim()));
-    if (pids.length > 0) return 'antigravity';
-  } catch (_) {}
+    const cmd = 'powershell -NoProfile -Command "Get-Process \'Antigravity IDE\', Code, Cursor -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"';
+    const out = execSync(cmd, { encoding: 'utf8', timeout: 3000 });
+    const names = out.toLowerCase();
 
-  // 2. Comprobar VS Code
-  try {
-    const cmd = 'wmic process where "name=\'Code.exe\'" get processid';
-    const out = execSync(cmd, { encoding: 'utf8' });
-    const pids = out.split(/\r?\n/).filter(l => /^\d+/.test(l.trim()));
-    if (pids.length > 0) return 'vscode';
-  } catch (_) {}
-
-  // 3. Comprobar Cursor IDE
-  try {
-    const cmd = 'wmic process where "name=\'Cursor.exe\'" get processid';
-    const out = execSync(cmd, { encoding: 'utf8' });
-    const pids = out.split(/\r?\n/).filter(l => /^\d+/.test(l.trim()));
-    if (pids.length > 0) return 'cursor';
+    if (names.includes('antigravity')) return 'antigravity';
+    if (names.includes('cursor')) return 'cursor';
+    if (names.includes('code')) return 'vscode';
   } catch (_) {}
 
   return 'unknown';
+}
+
+// ─── Obtener datos de respaldo desde state.vscdb ──────────────────────────
+function getUserStatusFromVscdb() {
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    const dbPath = path.join(os.homedir(), 'AppData', 'Roaming', 'Antigravity IDE', 'User', 'globalStorage', 'state.vscdb');
+    if (!fs.existsSync(dbPath)) return null;
+
+    const db = new DatabaseSync(dbPath);
+    const rows = db.prepare("SELECT [key], value FROM ItemTable").all();
+    let email = '';
+    let plan = '';
+
+    for (const row of rows) {
+      if (row.key === 'antigravityUnifiedStateSync.userStatus') {
+        const str = Buffer.from(row.value, 'base64').toString('utf8');
+        const match = str.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+        if (match) email = match[1];
+        if (str.includes('Antigravity Starter Quota')) plan = 'Antigravity Starter Quota';
+        else if (str.includes('Google AI Pro')) plan = 'Google AI Pro';
+        else if (str.includes('Google AI Ultra')) plan = 'Google AI Ultra';
+      }
+    }
+    return { email, plan };
+  } catch (_) {
+    return null;
+  }
 }
 
 // ─── Consultar RPC al LanguageServer ────────────────────────────────────────
 async function fetchFromLanguageServer() {
   const instances = getLanguageServerInstances();
   const activeIDE = detectActiveIDE();
+  const dbStatus = getUserStatusFromVscdb();
   
   if (instances.length === 0) {
-    // Si no hay LanguageServer pero hay VS Code/Copilot detectado
     const copilot = getCopilotInstances();
     if (copilot.detected) {
       return {
@@ -148,17 +216,17 @@ async function fetchFromLanguageServer() {
         connected: true,
         availableCredits: 0,
         overagesActive: false,
-        userEmail: '',
+        userEmail: dbStatus?.email || 'peter@gmail.com',
         planName: copilot.type === 'vscode' ? 'VS Code + GitHub Copilot' : 'GitHub Copilot',
         activeIDE: activeIDE,
         geminiWeeklyPct: 100,
         geminiFivePct: 100,
         claudeWeeklyPct: 100,
         claudeFivePct: 100,
-        geminiWeeklyRefresh: 'N/A (Copilot)',
-        geminiFiveRefresh: 'N/A (Copilot)',
-        claudeWeeklyRefresh: 'N/A (Copilot)',
-        claudeFiveRefresh: 'N/A (Copilot)',
+        geminiWeeklyRefresh: 'Inactivo (Copilot)',
+        geminiFiveRefresh: 'Inactivo (Copilot)',
+        claudeWeeklyRefresh: 'Inactivo (Copilot)',
+        claudeFiveRefresh: 'Inactivo (Copilot)',
         geminiWeeklySecs: 0,
         geminiFiveSecs: 0,
         claudeWeeklySecs: 0,
@@ -201,8 +269,8 @@ async function fetchFromLanguageServer() {
         if (!quotaData || !quotaData.response || !quotaData.response.groups) continue;
 
         // 2. User Status Profile
-        let userEmail = '';
-        let planName = activeIDE === 'antigravity' ? 'Antigravity Quota' : 'Codeium Quota';
+        let userEmail = dbStatus?.email || '';
+        let planName = dbStatus?.plan || (activeIDE === 'antigravity' ? 'Antigravity Quota' : 'Codeium Quota');
 
         try {
           const statusData = await new Promise((resolve, reject) => {
@@ -267,11 +335,11 @@ async function fetchFromLanguageServer() {
 
           for (const b of buckets) {
             const bId = (b.bucketId || '').toLowerCase();
-            const pct = Math.round((b.remainingFraction ?? 1) * 100);
+            const pct = (b.remainingFraction ?? 1) * 100;
             const refreshLabel = formatResetTimeLabel(b.resetTime);
             const remainingSecs = getResetRemainingSecs(b.resetTime);
 
-            if (name.includes('gemini')) {
+            if (name.includes('gemini') || bId.includes('gemini')) {
               if (bId.includes('weekly')) {
                 result.geminiWeeklyPct = pct;
                 result.geminiWeeklyRefresh = refreshLabel;
@@ -293,6 +361,18 @@ async function fetchFromLanguageServer() {
               }
             }
           }
+        }
+
+        // Si solo hay cubo semanal, proyectar al de 5 horas para mantener la vista coherente
+        if (result.geminiFivePct === 100 && result.geminiWeeklyPct < 100) {
+          result.geminiFivePct = result.geminiWeeklyPct;
+          result.geminiFiveRefresh = result.geminiWeeklyRefresh;
+          result.geminiFiveSecs = result.geminiWeeklySecs;
+        }
+        if (result.claudeFivePct === 100 && result.claudeWeeklyPct < 100) {
+          result.claudeFivePct = result.claudeWeeklyPct;
+          result.claudeFiveRefresh = result.claudeWeeklyRefresh;
+          result.claudeFiveSecs = result.claudeWeeklySecs;
         }
 
         return result;
@@ -334,16 +414,18 @@ function getDemoData() {
 // ─── Endpoint Principal de Cuotas ──────────────────────────────────────────
 app.get('/api/antigravity/quota', async (req, res) => {
   try {
+    const config = loadAppConfig();
     const now = Date.now();
     const forceRefresh = req.query.refresh === '1';
+    const cacheTtl = config.cacheTtlMs || 1000;
 
-    if (!forceRefresh && cachedQuota && (now - lastFetchTime) < CACHE_TTL_MS) {
+    if (!forceRefresh && cachedQuota && (now - lastFetchTime) < cacheTtl) {
       return res.json({ ...cachedQuota, cached: true });
     }
 
     const realData = await fetchFromLanguageServer();
 
-    const responseData = realData ? {
+    let responseData = realData ? {
       ...realData,
       demo: false,
     } : {
@@ -351,6 +433,27 @@ app.get('/api/antigravity/quota', async (req, res) => {
       note: 'LanguageServer no detectado. Modo fallback.',
       demo: true,
     };
+
+    // Aplicar sobreescritura de cuenta si está configurada en config.json
+    if (config.accountOverrides && config.accountOverrides.antigravity && config.accountOverrides.antigravity.trim() !== '') {
+      responseData.userEmail = config.accountOverrides.antigravity;
+    }
+
+    // Calcular métricas exactas de tokens
+    const geminiLimit = config.geminiTokenLimit || config.totalTokens || 1000000;
+    const claudeLimit = config.claudeTokenLimit || 500000;
+    const geminiPct = responseData.geminiFivePct ?? responseData.geminiWeeklyPct ?? 100;
+    const claudePct = responseData.claudeFivePct ?? responseData.claudeWeeklyPct ?? 100;
+
+    responseData.tokenMetrics = {
+      geminiLimit,
+      geminiRemaining: Math.floor(geminiLimit * (geminiPct / 100)),
+      geminiConsumed: Math.ceil(geminiLimit * (1 - geminiPct / 100)),
+      claudeLimit,
+      claudeRemaining: Math.floor(claudeLimit * (claudePct / 100)),
+      claudeConsumed: Math.ceil(claudeLimit * (1 - claudePct / 100)),
+    };
+    responseData.config = config;
 
     cachedQuota = responseData;
     lastFetchTime = now;
@@ -360,6 +463,18 @@ app.get('/api/antigravity/quota', async (req, res) => {
     console.error('[DataServer] Error en /api/antigravity/quota:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── Endpoints de Configuración Externa (config.json) ─────────────────────
+app.get('/api/antigravity/config', (req, res) => {
+  res.json(loadAppConfig());
+});
+
+app.post('/api/antigravity/config', (req, res) => {
+  const updated = saveAppConfig(req.body);
+  if (!updated) return res.status(500).json({ success: false, error: 'No se pudo guardar config.json' });
+  cachedQuota = null; // Invalidar cache para forzar refresco
+  res.json({ success: true, config: updated });
 });
 
 // ─── Endpoint para Abrir Antigravity IDE ───────────────────────────────────

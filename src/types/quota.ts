@@ -35,6 +35,15 @@ export interface CreditStatus {
 export type Credits = CreditStatus;
 export type ModelQuotaGroup = QuotaGroup;
 
+export interface TokenMetrics {
+  geminiLimit: number;
+  geminiRemaining: number;
+  geminiConsumed: number;
+  claudeLimit: number;
+  claudeRemaining: number;
+  claudeConsumed: number;
+}
+
 export interface QuotaSnapshot {
   timestamp: number;
   credits: CreditStatus;
@@ -47,6 +56,8 @@ export interface QuotaSnapshot {
   planName?: string;
   userEmail?: string;
   activeIDE?: string; // 'antigravity' | 'vscode' | 'cursor' | 'unknown'
+  tokenMetrics?: TokenMetrics;
+  config?: any;
 }
 
 export interface NotificationRule {

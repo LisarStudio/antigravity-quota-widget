@@ -165,6 +165,8 @@ export class AntigravityQuotaProvider {
       planName: data.planName || 'Starter Quota',
       userEmail: data.userEmail || '',
       activeIDE: data.activeIDE || 'unknown',
+      tokenMetrics: data.tokenMetrics,
+      config: data.config,
     };
   }
 

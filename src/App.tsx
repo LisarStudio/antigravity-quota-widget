@@ -30,9 +30,9 @@ export function App() {
       
       // Calcular los créditos/tokens reales estimados
       if (newSnapshot) {
-        const total = settings.totalTokens || 1500;
+        const total = newSnapshot.tokenMetrics?.geminiLimit || newSnapshot.config?.geminiTokenLimit || settings.totalTokens || 1000000;
         const geminiPct = newSnapshot.gemini.fiveHour.remainingPercentage;
-        newSnapshot.credits.availableCredits = Math.round(total * (geminiPct / 100));
+        newSnapshot.credits.availableCredits = newSnapshot.tokenMetrics?.geminiRemaining ?? Math.round(total * (geminiPct / 100));
       }
 
       setSnapshot(newSnapshot);

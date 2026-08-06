@@ -9,13 +9,13 @@ export class StorageService {
     mode: 'EXPANDED',
     alwaysOnTop: true,
     opacity: 0.94,
-    pollIntervalSeconds: 60,
+    pollIntervalSeconds: 2,
     demoMode: false,
     notificationsEnabled: true,
     soundEnabled: true,
     notificationRules: NotificationService.defaultRules,
     themeColor: 'red',
-    totalTokens: 1500,
+    totalTokens: 1000000,
   };
 
   public static loadSettings(): WidgetSettings {

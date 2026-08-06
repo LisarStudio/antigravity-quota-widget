@@ -19,7 +19,8 @@ let tray = null;
 let dataServer = null;
 let isCompactMode = false;
 let isAlwaysOnTop = true;
-let isDev = process.env.NODE_ENV === 'development';
+// isDev: true cuando se ejecuta desde el source (no desde un .exe empaquetado)
+let isDev = !app.isPackaged;
 
 app.on('second-instance', () => {
   if (mainWindow) {
@@ -96,8 +97,10 @@ function createWindow() {
   }, 1500);
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:4600');
-    if (process.env.OPEN_DEVTOOLS) mainWindow.webContents.openDevTools({ mode: 'detach' });
+    // Carga el servidor Vite (código fuente actualizado, siempre fresco)
+    mainWindow.loadURL('http://127.0.0.1:5173');
+    // Abrir DevTools si se quiere depurar
+    // mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }

@@ -1,0 +1,17 @@
+{
+  "pollIntervalSeconds": 2,
+  "cacheTtlMs": 1000,
+  "totalTokens": 1000000,
+  "geminiTokenLimit": 1000000,
+  "claudeTokenLimit": 500000,
+  "autoSyncAccounts": true,
+  "themeColor": "red",
+  "demoMode": false,
+  "notificationsEnabled": true,
+  "soundEnabled": true,
+  "accountOverrides": {
+    "antigravity": "",
+    "codex": "",
+    "claude": ""
+  }
+}
